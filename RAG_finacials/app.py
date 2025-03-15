@@ -1,3 +1,7 @@
+import os
+os.system('pip install flask flask-cors')
+os.system('pip install --upgrade pip')
+
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from generator import generate_response
@@ -33,4 +37,6 @@ def handle_query():
 
 # 3️⃣ Run Flask
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    #app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+
