@@ -2,6 +2,9 @@ import os
 os.system('pip install flask flask-cors')
 os.system('pip install --upgrade pip')
 
+import asyncio
+asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from generator import generate_response
@@ -37,6 +40,5 @@ def handle_query():
 
 # 3️⃣ Run Flask
 if __name__ == "__main__":
-    #app.run(host="0.0.0.0", port=5000, debug=True)
-    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=5001, debug=True, use_reloader=False)
 
