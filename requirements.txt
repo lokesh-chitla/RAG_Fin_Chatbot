@@ -10,3 +10,5 @@ numpy                   # For numerical operations
 requests                # General HTTP requests if needed
 python-dotenv           # If you load environment variables with dotenv
 pypdf                   # Sometimes used for PDF handling (optional)
+flask
+flask-cors
