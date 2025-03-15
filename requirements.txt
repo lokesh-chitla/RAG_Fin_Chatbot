@@ -1,0 +1,12 @@
+streamlit                # For your Streamlit UI
+transformers            # For using Flan-T5 or other Hugging Face models
+torch                   # Required backend for transformers
+faiss-cpu               # Vector similarity search
+sentence-transformers   # For embedding documents & queries
+pdfplumber              # Extract text & tables from PDFs
+rank-bm25               # If using multi-stage retrieval w/ BM25
+pandas                  # For table data & general data manipulation
+numpy                   # For numerical operations
+requests                # General HTTP requests if needed
+python-dotenv           # If you load environment variables with dotenv
+pypdf                   # Sometimes used for PDF handling (optional)

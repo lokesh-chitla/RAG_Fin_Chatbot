@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG System Query Interface</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+        input, button { padding: 10px; margin: 10px; font-size: 16px; }
+        #response { margin-top: 20px; font-weight: bold; }
+        #loading { display: none; font-style: italic; color: gray; }
+        .history { margin-top: 30px; text-align: left; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <h2>RAG System Query Interface</h2>
+
+    <input type="text" id="query" placeholder="Enter your query" required>
+    <button onclick="sendQuery()">Submit</button>
+
+    <p id="loading">Processing your query...</p>
+
+    <div id="response"></div>
+
+    <div class="history">
+        <h3>Query History</h3>
+        <ul id="history-list"></ul>
+    </div>
+
+    <script>
+        async function sendQuery() {
+            const query = document.getElementById("query").value;
+            if (!query.trim()) return alert("Please enter a query!");
+
+            document.getElementById("loading").style.display = "block";
+            document.getElementById("response").innerHTML = "";
+
+            const response = await fetch("/query", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query })
+            });
+
+            const result = await response.json();
+            document.getElementById("loading").style.display = "none";
+
+            if (result.error) {
+                document.getElementById("response").innerHTML = `<p style="color: red;">❌ ${result.error}</p>`;
+            } else {
+                document.getElementById("response").innerHTML = `<h3>Response:</h3><p>${result.response}</p>`;
+
+                // Add to query history
+                const historyList = document.getElementById("history-list");
+                const newEntry = document.createElement("li");
+                newEntry.textContent = query;
+                historyList.appendChild(newEntry);
+            }
+        }
+    </script>
+
+</body>
+</html>
+
