@@ -1,4 +1,5 @@
 import os
+import socket
 os.system('pip install flask flask-cors')
 os.system('pip install --upgrade pip')
 
@@ -39,6 +40,14 @@ def handle_query():
         return jsonify({"error": str(e)}), 500
 
 # 3️⃣ Run Flask
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True, use_reloader=False)
+#if __name__ == "__main__":
+#    app.run(host="0.0.0.0", port=5001, debug=True, use_reloader=False)
+def find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))  # Bind to a free port
+        return s.getsockname()[1]  # Return the free port number
 
+if __name__ == "__main__":
+    port = find_free_port()  # Find an available port
+    print(f"Running on port {port}")  # Print the port for reference
+    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
