@@ -127,6 +127,9 @@ def generate_response(query: str, mode: str = "multi-stage"):
     return response_text, f"{top_result['similarity']:.4f}"
 
 def main():
+    """
+    Streamlit UI for RAG-based Financial Chatbot.
+    """
     st.set_page_config(page_title="RAG Financial Chatbot", layout="wide")
     st.title("💰 RAG Financial Chatbot")
     st.markdown("AI-powered retrieval system for financial queries.")
@@ -148,7 +151,6 @@ def main():
         st.info(answer)
         st.markdown("### 📊 Confidence Score")
         st.success(confidence)
-
     st.markdown("---")
     st.markdown("## 🕒 Search History")
     if "history" not in st.session_state:
@@ -161,6 +163,6 @@ def main():
         with st.expander(entry["query"]):
             st.write(f"**Answer:** {entry['answer']}")
             st.write(f"**Confidence Score:** {entry['confidence']}")
-                
+                  
 if __name__ == "__main__":
     main()
