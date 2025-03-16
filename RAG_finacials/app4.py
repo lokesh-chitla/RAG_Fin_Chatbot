@@ -20,6 +20,7 @@ try:
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     slm_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
     slm_pipeline = pipeline("text2text-generation", model=slm_model, tokenizer=tokenizer)
+    logger.info("SLM pipeline loaded successfully")
 except Exception as e:
     logger.error(f"Failed to load Flan-T5 model: {e}")
     slm_pipeline = None
@@ -70,15 +71,6 @@ except Exception as e:
     classifier = None
 
 def is_financial_query(query: str) -> bool:
-    """
-    Determines whether the input query is financial in nature.
-    
-    Parameters:
-        query (str): The user input query.
-    
-    Returns:
-        bool: True if the query is classified as financial, False otherwise.
-    """
     if not classifier:
         return False
     candidate_labels = ["financial", "non-financial"]
@@ -90,15 +82,6 @@ def is_financial_query(query: str) -> bool:
         return False
 
 def basic_retrieve(query: str):
-    """
-    Performs basic retrieval using FAISS vector search.
-    
-    Parameters:
-        query (str): The input query from the user.
-    
-    Returns:
-        list: A list of relevant documents with similarity scores.
-    """
     if not embedder or not faiss_pdf or not chunk_metadata:
         return []
     try:
@@ -115,15 +98,6 @@ def basic_retrieve(query: str):
         return []
 
 def multi_stage_retrieve(query: str):
-    """
-    Performs multi-stage retrieval using BM25 followed by FAISS.
-    
-    Parameters:
-        query (str): The input query from the user.
-    
-    Returns:
-        list: A list of relevant documents retrieved via multi-stage retrieval.
-    """
     if not bm25 or not documents:
         return []
     try:
@@ -134,17 +108,7 @@ def multi_stage_retrieve(query: str):
         return []
 
 def generate_response(query: str, mode: str = "multi-stage"):
-    """
-    Generates a response based on retrieval results.
-    
-    Parameters:
-        query (str): The user input query.
-        mode (str): Retrieval mode - either "multi-stage" or "basic".
-    
-    Returns:
-        tuple: (response text, similarity score or status message).
-    """
-    if not all([embedder, faiss_pdf, chunk_metadata, bm25]):
+    if not all([embedder, faiss_pdf, chunk_metadata, bm25, slm_pipeline]):
         return "One or more models or data failed to load. Please check the settings.", "N/A"
     if not is_financial_query(query):
         return "This is not a financial query. Please ask something related to finance.", "N/A"
@@ -152,12 +116,17 @@ def generate_response(query: str, mode: str = "multi-stage"):
     if not results:
         return "No relevant data found.", "N/A"
     top_result = results[0]
-    return top_result['text'], f"{top_result['similarity']:.4f}"
+    trimmed_text = top_result['text'][:200]
+    logger.info(f"SLM input text (trimmed): {trimmed_text}")
+    try:
+        response_text = slm_pipeline(trimmed_text, max_length=200, truncation=True)[0]['generated_text'] if slm_pipeline else top_result['text']
+        logger.info(f"SLM output: {response_text}")
+    except Exception as e:
+        logger.error(f"SLM pipeline generation failed: {e}")
+        response_text = top_result['text']
+    return response_text, f"{top_result['similarity']:.4f}"
 
 def main():
-    """
-    Streamlit UI for RAG-based Financial Chatbot.
-    """
     st.set_page_config(page_title="RAG Financial Chatbot", layout="wide")
     st.title("💰 RAG Financial Chatbot")
     st.markdown("AI-powered retrieval system for financial queries.")
@@ -179,6 +148,7 @@ def main():
         st.info(answer)
         st.markdown("### 📊 Confidence Score")
         st.success(confidence)
+
     st.markdown("---")
     st.markdown("## 🕒 Search History")
     if "history" not in st.session_state:
@@ -191,6 +161,6 @@ def main():
         with st.expander(entry["query"]):
             st.write(f"**Answer:** {entry['answer']}")
             st.write(f"**Confidence Score:** {entry['confidence']}")
-            
+                
 if __name__ == "__main__":
     main()
