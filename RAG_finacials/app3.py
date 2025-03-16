@@ -8,7 +8,7 @@ from rank_bm25 import BM25Okapi
 from transformers import pipeline
 
 # === Load Models & Data ===
-st.sidebar.title("Loading Models...")
+#st.sidebar.title("Loading Models...")
 
 # Load SentenceTransformer for embeddings
 try:
