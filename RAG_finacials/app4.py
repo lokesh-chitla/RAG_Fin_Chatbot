@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Load Flan-T5 for response generation
 try:
-    model_name = "google/flan-t5-large"
+    model_name = "google/flan-t5-small"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     slm_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
     slm_pipeline = pipeline("text2text-generation", model=slm_model, tokenizer=tokenizer)
@@ -107,6 +107,25 @@ def multi_stage_retrieve(query: str):
         logger.error(f"Multi-stage retrieval failed: {e}")
         return []
 
+def generate_response_V1(query: str, mode: str = "multi-stage"):
+    if not all([embedder, faiss_pdf, chunk_metadata, bm25, slm_pipeline]):
+        return "One or more models or data failed to load. Please check the settings.", "N/A"
+    if not is_financial_query(query):
+        return "This is not a financial query. Please ask something related to finance.", "N/A"
+    results = multi_stage_retrieve(query) if mode == "multi-stage" else basic_retrieve(query)
+    if not results:
+        return "No relevant data found.", "N/A"
+    top_result = results[0]
+    logger.info(f"SLM input text: {top_result['text']}")
+    try:
+        response_text = slm_pipeline(top_result['text'], max_length=500, truncation=False)[0]['generated_text'] if slm_pipeline else top_result['text']
+        logger.info(f"SLM output: {response_text}")
+    except Exception as e:
+        logger.error(f"SLM pipeline generation failed: {e}")
+        response_text = top_result['text']
+    return response_text, f"{top_result['similarity']:.4f}"
+
+
 def generate_response(query: str, mode: str = "multi-stage"):
     if not all([embedder, faiss_pdf, chunk_metadata, bm25, slm_pipeline]):
         return "One or more models or data failed to load. Please check the settings.", "N/A"
@@ -125,6 +144,7 @@ def generate_response(query: str, mode: str = "multi-stage"):
         logger.error(f"SLM pipeline generation failed: {e}")
         response_text = top_result['text']
     return response_text, f"{top_result['similarity']:.4f}"
+
 
 def main():
     """
