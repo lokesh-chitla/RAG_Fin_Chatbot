@@ -8,11 +8,13 @@ from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
 from transformers import pipeline, AutoModelForSeq2SeqLM, AutoTokenizer
 
-# Configure logging
+# === Configure Logging ===
+# Logging is used to track the flow of the application and debug issues.
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 # === Load Models & Data ===
+# This section loads all necessary models and data files required for the RAG system.
 
 # Load Flan-T5 for response generation
 try:
@@ -34,9 +36,9 @@ except Exception as e:
 
 # Define paths for data files
 DATA_DIR = "data"
-FAISS_INDEX_PATH = os.path.join(DATA_DIR, "faiss_pdfs.bin")
-CHUNKS_JSON_PATH = os.path.join(DATA_DIR, "pdf_chunks.json")
-DOC_JSON_PATH = os.path.join(DATA_DIR, "all_docs.json")
+FAISS_INDEX_PATH = os.path.join(DATA_DIR, "faiss_pdfs.bin")  # Path to FAISS index file
+CHUNKS_JSON_PATH = os.path.join(DATA_DIR, "pdf_chunks.json")  # Path to PDF chunk metadata
+DOC_JSON_PATH = os.path.join(DATA_DIR, "all_docs.json")  # Path to document corpus for BM25
 
 # Load FAISS index for vector search
 try:
@@ -64,6 +66,7 @@ except Exception as e:
     bm25 = None
 
 # === Financial Query Classification ===
+# A zero-shot classifier is used to determine if a query is financial or not.
 try:
     classifier = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
 except Exception as e:
@@ -71,6 +74,13 @@ except Exception as e:
     classifier = None
 
 def is_financial_query(query: str) -> bool:
+    """
+    Classifies whether a query is financial or not using a zero-shot classifier.
+    Args:
+        query (str): The user's query.
+    Returns:
+        bool: True if the query is financial, False otherwise.
+    """
     if not classifier:
         return False
     candidate_labels = ["financial", "non-financial"]
@@ -82,6 +92,13 @@ def is_financial_query(query: str) -> bool:
         return False
 
 def basic_retrieve(query: str):
+    """
+    Performs basic retrieval using FAISS vector search.
+    Args:
+        query (str): The user's query.
+    Returns:
+        list: A list of retrieved documents with metadata.
+    """
     if not embedder or not faiss_pdf or not chunk_metadata:
         return []
     try:
@@ -98,6 +115,13 @@ def basic_retrieve(query: str):
         return []
 
 def multi_stage_retrieve(query: str):
+    """
+    Performs multi-stage retrieval: BM25 for keyword search followed by FAISS for vector search.
+    Args:
+        query (str): The user's query.
+    Returns:
+        list: A list of retrieved documents with metadata.
+    """
     if not bm25 or not documents:
         return []
     try:
@@ -107,26 +131,15 @@ def multi_stage_retrieve(query: str):
         logger.error(f"Multi-stage retrieval failed: {e}")
         return []
 
-def generate_response_V1(query: str, mode: str = "multi-stage"):
-    if not all([embedder, faiss_pdf, chunk_metadata, bm25, slm_pipeline]):
-        return "One or more models or data failed to load. Please check the settings.", "N/A"
-    if not is_financial_query(query):
-        return "This is not a financial query. Please ask something related to finance.", "N/A"
-    results = multi_stage_retrieve(query) if mode == "multi-stage" else basic_retrieve(query)
-    if not results:
-        return "No relevant data found.", "N/A"
-    top_result = results[0]
-    logger.info(f"SLM input text: {top_result['text']}")
-    try:
-        response_text = slm_pipeline(top_result['text'], max_length=500, truncation=False)[0]['generated_text'] if slm_pipeline else top_result['text']
-        logger.info(f"SLM output: {response_text}")
-    except Exception as e:
-        logger.error(f"SLM pipeline generation failed: {e}")
-        response_text = top_result['text']
-    return response_text, f"{top_result['similarity']:.4f}"
-
-
 def generate_response(query: str, mode: str = "multi-stage"):
+    """
+    Generates a response to the user's query using the RAG pipeline.
+    Args:
+        query (str): The user's query.
+        mode (str): The retrieval mode ("multi-stage" or "basic").
+    Returns:
+        tuple: (response_text, confidence_score)
+    """
     if not all([embedder, faiss_pdf, chunk_metadata, bm25, slm_pipeline]):
         return "One or more models or data failed to load. Please check the settings.", "N/A"
     if not is_financial_query(query):
@@ -135,7 +148,7 @@ def generate_response(query: str, mode: str = "multi-stage"):
     if not results:
         return "No relevant data found.", "N/A"
     top_result = results[0]
-    trimmed_text = top_result['text'][:200]
+    trimmed_text = top_result['text'][:200]  # Trim text to avoid exceeding model input limits
     logger.info(f"SLM input text (trimmed): {trimmed_text}")
     try:
         response_text = slm_pipeline(trimmed_text, max_length=200, truncation=True)[0]['generated_text'] if slm_pipeline else top_result['text']
@@ -144,7 +157,6 @@ def generate_response(query: str, mode: str = "multi-stage"):
         logger.error(f"SLM pipeline generation failed: {e}")
         response_text = top_result['text']
     return response_text, f"{top_result['similarity']:.4f}"
-
 
 def main():
     """
@@ -171,6 +183,7 @@ def main():
         st.info(answer)
         st.markdown("### 📊 Confidence Score")
         st.success(confidence)
+    
     st.markdown("---")
     st.markdown("## 🕒 Search History")
     if "history" not in st.session_state:
